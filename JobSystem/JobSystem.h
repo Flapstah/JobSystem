@@ -5,7 +5,6 @@
 #include <chrono>
 #include <deque>
 #include <functional>
-#include <limits>
 #include <mutex>
 #include <thread>
 #include <utility>
@@ -14,8 +13,7 @@
 // temporary for debugging
 #include <iostream>
 
-#include <Windows.h>
-#undef max
+#include "thread.h"
 
 #define THREAD_ID "[" << std::this_thread::get_id() << "] "
 
@@ -30,14 +28,14 @@ public:
 	};
 
 	CJobSystem()
-		: m_numThreads(std::thread::hardware_concurrency() - 1)
+		: m_numThreads{std::thread::hardware_concurrency() - 1}
 	{
 		std::cout << THREAD_ID << "CJobSystem constructed : m_numThreads = " << m_numThreads << std::endl;
 		CreateWorkerThreads();
 	}
 
 	CJobSystem(size_t numThreads)
-		: m_numThreads(numThreads)
+		: m_numThreads{numThreads}
 	{
 		std::cout << THREAD_ID << "CJobSystem constructed : m_numThreads = " << m_numThreads << std::endl;
 		CreateWorkerThreads();
@@ -72,12 +70,13 @@ private:
 	void CreateWorkerThreads()
 	{
 		m_workerThreads.resize(m_numThreads);
+		char nameBuffer[32] = "";
 		for (size_t index = 0; index < m_numThreads; ++index)
 		{
-			m_workerThreads[index] = new CWorkerThread();
-			m_workerThreads[index]->SetAffinityByProcessor(index);
-			m_workerThreads[index]->RequestStart(&m_jobQueue);
-			std::cout << THREAD_ID << "CJobSytem::CreateWorkerThreads() created [" << m_workerThreads[index]->id() << "]" << std::endl;
+			sprintf_s(nameBuffer, sizeof(nameBuffer), "WorkerThread%d", index);
+			std::string name(nameBuffer);
+			m_workerThreads[index] = new CWorkerThread(name, &m_jobQueue, index);
+			std::cout << THREAD_ID << "CJobSytem::CreateWorkerThreads() created [" << m_workerThreads[index]->GetId() << "]" << std::endl;
 		}
 	}
 
@@ -125,7 +124,7 @@ private:
 		std::deque<SJobInfo> m_queue;
 	};
 
-	class CWorkerThread
+	class CWorkerThread : public CThread
 	{
 	public:
 		enum EState : char
@@ -136,9 +135,13 @@ private:
 			S_TERMINATE,
 		};
 
-		CWorkerThread()
-			: m_state(S_IDLE)
+		CWorkerThread(std::string& name, CJobQueue* queue, uint64_t coreAffinity)
+			: CThread{ name }
+			, m_state{S_RUNNING}
+			, m_queue{queue}
 		{
+			auto lambda = [this]() { this->Main(); };
+			Start<decltype(lambda)>(lambda, 1LL << coreAffinity);
 		}
 
 		~CWorkerThread()
@@ -146,51 +149,21 @@ private:
 			RequestTerminate();
 		}
 
-		inline std::thread::id id()
-		{
-			return m_thread.get_id();
-		}
-
-		void RequestStart(CJobQueue* queue)
-		{
-			m_queue = queue;
-			SetState(S_RUNNING);
-			m_thread = std::thread([this]() { this->Main(); });
-		}
-
 		void RequestTerminate()
 		{
-			std::cout << THREAD_ID << "CWorkerThread::RequestTerminate() [" << m_thread.get_id() << "]" << std::endl;
+			std::cout << THREAD_ID << "CWorkerThread::RequestTerminate() [" << GetId() << "]" << std::endl;
 			if (GetState() == S_RUNNING)
 			{
 				SetState(S_TERMINATE);
-				if (m_thread.joinable())
-				{
-					m_thread.join();
-				}
+				Join();
 			}
-		}
-
-		bool SetAffinityByProcessor(uint64_t processorIndex)
-		{
-			uint64_t affinityMask = 1;
-			bool success = false;
-			if (processorIndex < std::thread::hardware_concurrency())
-			{
-				affinityMask <<= processorIndex;
-				DWORD_PTR rc = SetThreadAffinityMask(m_thread.native_handle(), (DWORD_PTR)affinityMask);
-				std::cout << THREAD_ID << "CWorkerThread::SetAffinityByProcessor() [" << std::hex << affinityMask << "] [" << ((rc != 0) ? "true" : "false") << "]" << std::endl;
-				success = (rc != 0);
-			}
-
-			return success;
 		}
 
 	private:
 		void SetState(EState state)
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
-			std::cout << THREAD_ID << "CWorkerThread::SetState() [" << m_thread.get_id() << "] " << GetStateString(m_state) << " -> " << GetStateString(state) << std::endl;
+			std::cout << THREAD_ID << "CWorkerThread::SetState() [" << GetId() << "] " << GetStateString(m_state) << " -> " << GetStateString(state) << std::endl;
 			m_state = state;
 		}
 
@@ -240,7 +213,6 @@ private:
 
 		EState m_state;
 		std::mutex m_mutex;
-		std::thread m_thread;
 		CJobQueue* m_queue;
 	};
 
