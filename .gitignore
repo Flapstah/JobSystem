@@ -1,0 +1,9 @@
+*~
+*.swp
+/.vs
+/Debug
+/JobSystem/Debug
+/ipch
+JobSystem.VC.VC.opendb
+JobSystem.VC.db
+
