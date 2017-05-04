@@ -3,8 +3,17 @@
 
 #include "stdafx.h"
 #include <functional>
-#include <iostream>
 #include <memory>
+
+#define LOG_FATAL(_format, ...) g_log.write(CLog::eS_FATAL, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_ERROR(_format, ...) g_log.write(CLog::eS_ERROR, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_WARNING(_format, ...) g_log.write(CLog::eS_WARNING, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_DEBUG(_format, ...) g_log.write(CLog::eS_DEBUG, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_INFORMATION(_format, ...) g_log.write(CLog::eS_INFORMATION, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_VERBOSE(_format, ...) g_log.write(CLog::eS_VERBOSE, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+
+#include "log.h"
+CLog g_log(CLog::eS_VERBOSE, "test.log");
 
 #include "JobSystem.h"
 
@@ -93,8 +102,11 @@ int main(int argc, char *argv[])
 	call_callback();
 	*/
 
+	LOG_DEBUG("Start");
+
 	CJobSystem js;
 	js.Update();
 
+	LOG_DEBUG("End");
 	return 0;
 }

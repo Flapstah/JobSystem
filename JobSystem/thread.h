@@ -22,17 +22,17 @@ public:
 		{
 			if (SetThreadAffinityMask(m_thread.native_handle(), (DWORD_PTR)affinityMask) == 0)
 			{
-				std::cout << "[" << m_name << "] (const) starting..." << std::endl;
+				LOG_VERBOSE("[%s] (const) starting...", GetName())
 				m_thread = std::thread(function);
 			}
 			else
 			{
-				std::cout << "[" << m_name << "] unable to set affinity of [0x" << std::hex << affinityMask << "]" << std::endl;
+				LOG_VERBOSE("[%s] unable to set affinity of [0x%X]", GetName(), affinityMask);
 			}
 		}
 		else
 		{
-			std::cout << "[" << m_name << "] already running..." << std::endl;
+			LOG_VERBOSE("[%s] already running...", GetName());
 		}
 	}
 
@@ -43,17 +43,17 @@ public:
 		{
 			if (SetThreadAffinityMask(m_thread.native_handle(), (DWORD_PTR)affinityMask) == 0)
 			{
-				std::cout << "[" << m_name << "] starting..." << std::endl;
+				LOG_VERBOSE("[%s] starting...", GetName());
 				m_thread = std::thread(function);
 			}
 			else
 			{
-				std::cout << "[" << m_name << "] unable to set affinity of [0x" << std::hex << affinityMask << "]" << std::endl;
+				LOG_VERBOSE("[%s] unable to set affinity of [0x%X]", GetName(), affinityMask);
 			}
 		}
 		else
 		{
-			std::cout << "[" << m_name << "] already running..." << std::endl;
+			LOG_VERBOSE("[%s] already running...", GetName());
 		}
 	}
 

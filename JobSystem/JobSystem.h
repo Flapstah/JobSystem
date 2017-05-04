@@ -6,12 +6,10 @@
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
-
-// temporary for debugging
-#include <iostream>
 
 #include "thread.h"
 
@@ -30,14 +28,14 @@ public:
 	CJobSystem()
 		: m_numThreads{std::thread::hardware_concurrency() - 1}
 	{
-		std::cout << THREAD_ID << "CJobSystem constructed : m_numThreads = " << m_numThreads << std::endl;
+		LOG_INFORMATION("[%d] CJobSystem constructed : m_numThreads = %d", std::this_thread::get_id(), m_numThreads);
 		CreateWorkerThreads();
 	}
 
 	CJobSystem(size_t numThreads)
 		: m_numThreads{numThreads}
 	{
-		std::cout << THREAD_ID << "CJobSystem constructed : m_numThreads = " << m_numThreads << std::endl;
+		LOG_INFORMATION("[%d] CJobSystem constructed : m_numThreads = %d", std::this_thread::get_id(), m_numThreads);
 		CreateWorkerThreads();
 	}
 
@@ -50,12 +48,12 @@ public:
 	{
 		// Main update loop to be run on the main thread
 		// Needs to service callbacks on the main thread
-		std::cout << THREAD_ID << "CJobSystem::Update()" << std::endl;
+		LOG_INFORMATION("[%d] CJobSystem::Update()", std::this_thread::get_id());
 	}
 
 	void Shutdown()
 	{
-		std::cout << THREAD_ID << "CJobSystem::Shutdown()" << std::endl;
+		LOG_INFORMATION("[%d] CJobSystem::Shutdown()", std::this_thread::get_id());
 		for (CWorkerThread*& workerThread : m_workerThreads)
 		{
 			if (workerThread != nullptr)
@@ -76,7 +74,7 @@ private:
 			sprintf_s(nameBuffer, sizeof(nameBuffer), "WorkerThread%d", index);
 			std::string name(nameBuffer);
 			m_workerThreads[index] = new CWorkerThread(name, &m_jobQueue, index);
-			std::cout << THREAD_ID << "CJobSytem::CreateWorkerThreads() created [" << m_workerThreads[index]->GetId() << "]" << std::endl;
+			LOG_INFORMATION("[%d] CJobSystem::CreateWorkerThreads() created [%d]", std::this_thread::get_id(), m_workerThreads[index]->GetId());
 		}
 	}
 
@@ -151,7 +149,7 @@ private:
 
 		void RequestTerminate()
 		{
-			std::cout << THREAD_ID << "CWorkerThread::RequestTerminate() [" << GetId() << "]" << std::endl;
+			LOG_INFORMATION("[%d] CWorkerThread::RequestTerminate() [%d]", std::this_thread::get_id(), GetId());
 			if (GetState() == S_RUNNING)
 			{
 				SetState(S_TERMINATE);
@@ -163,7 +161,7 @@ private:
 		void SetState(EState state)
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
-			std::cout << THREAD_ID << "CWorkerThread::SetState() [" << GetId() << "] " << GetStateString(m_state) << " -> " << GetStateString(state) << std::endl;
+			LOG_INFORMATION("[%d] CWorkerThread::SetState() [%d] %s -> %s", std::this_thread::get_id(), GetId(), GetStateString(m_state), GetStateString(state));
 			m_state = state;
 		}
 
@@ -187,26 +185,26 @@ private:
 
 		void Main()
 		{
-			std::cout << THREAD_ID << "CWorkerThread::Main() starting" << std::endl;
+			LOG_INFORMATION("[%d] CWorkerThread::Main() starting", std::this_thread::get_id());
 
 			while (GetState() == S_RUNNING)
 			{
 				std::function<void()>&& function = m_queue->pop();
 				if (function != nullptr)
 				{
-					std::cout << THREAD_ID  << "CWorkerThread::Main() executing function" << std::endl;
+					LOG_INFORMATION("[%d] CWorkerThread::Main() executing function", std::this_thread::get_id());
 					function();
 				}
 				else
 				{
-					std::cout << THREAD_ID  << "CWorkerThread::Main() waiting" << std::endl;
+					LOG_INFORMATION("[%d] CWorkerThread::Main() waiting", std::this_thread::get_id());
 					//std::this_thread::yield();
 					std::this_thread::sleep_for(std::chrono::microseconds(100));
 				}
 			}
 
 			SetState(S_TERMINATING);
-			std::cout << THREAD_ID << "CWorkerThread::Main() shutting down with " << m_queue->size() << " outstanding jobs in queue" << std::endl;
+			LOG_INFORMATION("[%d] CWorkerThread::Main() shutting down with %d outstanding jobs in queue", std::this_thread::get_id(), m_queue->size());
 
 			SetState(S_IDLE);
 		}
