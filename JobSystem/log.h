@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
 #include <fstream>
 #include <string>
 
@@ -12,15 +13,15 @@ public:
 		eS_FATAL,
 		eS_ERROR,
 		eS_WARNING,
-		eS_DEBUG,
 		eS_INFORMATION,
+		eS_DEBUG,
 		eS_VERBOSE,
 	};
 
 	CLog(eSeverity level = eS_INFORMATION, const char* name = nullptr)
-		: m_name((name != nullptr) ? name : "anonymous")
-		, m_level(level)
-		, m_file((name != nullptr) ? new std::ofstream(name, std::ios_base::trunc | std::ios_base::out) : nullptr)
+		: m_name{ (name != nullptr) ? name : "anonymous" }
+		, m_level{ level }
+		, m_file{ (name != nullptr) ? new std::ofstream(name, std::ios_base::trunc | std::ios_base::out) : nullptr }
 	{
 	}
 	~CLog()
@@ -42,7 +43,12 @@ public:
 		if (level <= m_level)
 		{
 			auto& out = (level > eS_ERROR) ? std::cout : std::cerr;
+#if defined _DEBUG
 			std::string buffer = format_string("%s(%d) [%s] %s\n", file, line, level_to_string(level), format);
+#else
+			file; line; // prevent 'unused parameter' warning
+			std::string buffer = format_string("[%s] %s\n", level_to_string(level), format);
+#endif // defined _DEBUG
 			if (sizeof...(args) > 0)
 			{
 				buffer = format_string(buffer.c_str(), args...);
@@ -100,6 +106,21 @@ private:
 	eSeverity m_level;
 	std::ofstream* m_file;
 };
+
+extern CLog g_log;
+
+#define LOG_FATAL(_format, ...) g_log.write(CLog::eS_FATAL, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_ERROR(_format, ...) g_log.write(CLog::eS_ERROR, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_WARNING(_format, ...) g_log.write(CLog::eS_WARNING, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_INFORMATION(_format, ...) g_log.write(CLog::eS_INFORMATION, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#if defined _DEBUG
+#define LOG_DEBUG(_format, ...) g_log.write(CLog::eS_DEBUG, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#define LOG_VERBOSE(_format, ...) g_log.write(CLog::eS_VERBOSE, __FILE__, __LINE__, _format, ##__VA_ARGS__)
+#else
+// Elide debug and verbose from release mode
+#define LOG_DEBUG(_format, ...)
+#define LOG_VERBOSE(_format, ...)
+#endif // defined _DEBUG
 
 /*
 class CWLog

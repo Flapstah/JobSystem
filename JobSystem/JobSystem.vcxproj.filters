@@ -24,7 +24,7 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="JobSystem.h">
+    <ClInclude Include="jobsystem.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="thread.h">
@@ -38,7 +38,7 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="JobSystem.cpp">
+    <ClCompile Include="jobsystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
